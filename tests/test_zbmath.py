@@ -77,3 +77,4 @@ def test_zbmath_lookup_no_title() -> None:
     bib = BibtexEntry.from_entry("test", entry)
     lookup = ZbMathLookup(bib)
     assert lookup.query() is None
+
