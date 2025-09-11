@@ -8,6 +8,7 @@ from ..APIs.openalex import OpenAlexLookup
 from ..APIs.researchr import ResearchrLookup
 from ..APIs.semantic_scholar import SemanticScholarLookup
 from ..APIs.unpaywall import UnpaywallLookup
+from ..APIs.zbmath import ZbMathLookup
 from ..lookups.abstract_entry_lookup import LookupType
 
 # List of lookup to use, in the order they will be used
@@ -20,5 +21,6 @@ LOOKUPS: List[LookupType] = [
     DBLPLookup,
     ResearchrLookup,
     InpireHEPLookup,
+    ZbMathLookup,
 ]
 LOOKUP_NAMES = [cls.name for cls in LOOKUPS]
