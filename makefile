@@ -84,6 +84,11 @@ test: ## Run all tests
 	$(call print,Running pytest on all test)
 	$(PYTEST) --cov
 
+# Allow running an individual test file, e.g. `make test_zbmath`
+test_%: ## Run tests in tests/test_%.py
+	$(call print,Running pytest on tests/test_$*.py)
+	PYTHONPATH=. $(PYTEST) tests/test_$*.py
+
 .PHONY: coverage
 coverage: ## build html coverage and open in browser
 	$(call print,Building coverage report)
