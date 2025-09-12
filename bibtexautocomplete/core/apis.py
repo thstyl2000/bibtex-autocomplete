@@ -21,6 +21,6 @@ LOOKUPS: List[LookupType] = [
     DBLPLookup,
     ResearchrLookup,
     InpireHEPLookup,
-    ZbMathLookup,
 ]
+LOOKUPS.append(ZbMathLookup)
 LOOKUP_NAMES = [cls.name for cls in LOOKUPS]
