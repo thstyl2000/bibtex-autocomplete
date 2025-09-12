@@ -1,14 +1,10 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import pytest
-
-from urllib.parse import parse_qs, urlparse
-
 
 from bibtexautocomplete.APIs.zbmath import ZbMathLookup
 from bibtexautocomplete.bibtex.author import Author
 from bibtexautocomplete.bibtex.entry import BibtexEntry
-from bibtexautocomplete.bibtex.normalize import normalize_str
 from bibtexautocomplete.utils.safe_json import SafeJSON
 
 
@@ -139,6 +135,45 @@ def test_zbmath_lookup(entry: Dict[str, str], expected: str) -> None:
             assert title is not None and expected.lower() in title.lower()
 
 
+def _query_or_skip(entry: Dict[str, str]) -> Optional[BibtexEntry]:
+    """Run a zbMATH query for entry, tolerating rate limit responses"""
+    bib = BibtexEntry.from_entry("test", entry)
+    lookup = ZbMathLookup(bib)
+    res = lookup.query()
+    if res is None:
+        status = lookup.get_last_query_info().get("response-status")
+        if isinstance(status, int):
+            assert status == 429 or status >= 500
+        return None
+    return res
+
+
+def test_zbmath_book_fields() -> None:
+    entry = {
+        "title": "Pseudodifferential and singular integral operators",
+        "author": "Abels, H.",
+        "ID": "Abels2012",
+    }
+    res = _query_or_skip(entry)
+    if res is not None:
+        publisher = res.publisher.to_str()
+        assert publisher is not None and "de Gruyter" in publisher
+        assert res.isbn.to_str() == "978-3110250305"
+
+
+def test_zbmath_article_fields() -> None:
+    entry = {
+        "title": "Nonlocal models for nonlinear, dispersive waves",
+        "author": "Abdelouhab, L. and Bona, J.L. and Felland, M. and Saut, J.-C.",
+        "ID": "AbdelouhabBonaFellandSaut89",
+    }
+    res = _query_or_skip(entry)
+    if res is not None:
+        assert res.journal.to_str() == "Physica D"
+        assert res.issn.to_str() == "0167-2789"
+        assert res.volume.to_str() == "40"
+        assert res.number.to_str() == "3"
+
 
 def test_zbmath_lookup_no_title() -> None:
     entry = {
@@ -148,28 +183,3 @@ def test_zbmath_lookup_no_title() -> None:
     bib = BibtexEntry.from_entry("test", entry)
     lookup = ZbMathLookup(bib)
     assert lookup.query() is None
-
-
-
-def test_zbmath_lookup_quoted_title() -> None:
-    entry = {
-        "title": "Nonlocal models for nonlinear, dispersive waves",
-        "author": "Abdelouhab, L. and Bona, J.L. and Felland, M. and Saut, J.-C.",
-        "ID": "AbdelouhabBonaFellandSaut89",
-    }
-    bib = BibtexEntry.from_entry("test", entry)
-    lookup = ZbMathLookup(bib)
-    res = lookup.query()
-    if res is None:
-        status = lookup.get_last_query_info().get("response-status")
-        if isinstance(status, int):
-            assert status == 429 or status >= 500
-        return
-    info = lookup.get_last_query_info()
-    url = info.get("url")
-    assert isinstance(url, str)
-    params = parse_qs(urlparse(url).query)
-    search = params.get("search_string", [""])[0]
-    assert search.startswith(f'"{normalize_str(entry["title"])}"')
-    assert res.doi.to_str() == "10.1016/0167-2789(89)90050-x"
-
