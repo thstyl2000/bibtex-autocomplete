@@ -7,6 +7,7 @@ from typing import Dict, Iterable, List, Optional
 from ..bibtex.author import Author
 from ..bibtex.constants import FieldNames
 from ..bibtex.entry import BibtexEntry
+from ..bibtex.normalize import normalize_doi
 from ..lookups.lookups import JSON_Lookup
 from ..utils.constants import QUERY_MAX_RESULTS
 from ..utils.safe_json import SafeJSON
@@ -71,7 +72,16 @@ class ZbMathLookup(JSON_Lookup):
         """Extract bibtex data from JSON output"""
         values = BibtexEntry(self.name, self.entry.id)
         values.author.set(self.get_authors(result["contributors"]["authors"]))
-        values.doi.set(result["doi"].to_str())
+
+        doi = normalize_doi(result["doi"].to_str())
+        if doi is None:
+            for link in result["links"].iter_list():
+                if link["type"].to_str() == "doi":
+                    doi = normalize_doi(link["identifier"].to_str())
+                    if doi is not None:
+                        break
+        values.doi.set(doi)
+
         values.pages.set_str(result["source"]["pages"].to_str())
         values.title.set(result["title"]["title"].to_str())
         values.url.set(result["zbmath_url"].to_str())
