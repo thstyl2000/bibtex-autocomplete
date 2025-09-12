@@ -41,7 +41,8 @@ class ZbMathLookup(JSON_Lookup):
             return params
         if self.title is None:
             raise ValueError("zbMATH called with no title")
-        search = self.title
+        # Surround the title with quotes to mimic the website's exact-phrase search
+        search = f'"{self.title}"'
         if self.authors:
             search += " " + " ".join(self.authors)
         params["search_string"] = search
