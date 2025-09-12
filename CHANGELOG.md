@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+- Add zbMATH Open API lookup and accompanying tests
+
 ## Version 1.4.3 - 2025-08-24
 
 - Cleaner error message when failing to decode latex from input files
