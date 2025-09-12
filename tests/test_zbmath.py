@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 
+
 import pytest
 
 from bibtexautocomplete.APIs.zbmath import ZbMathLookup
@@ -182,6 +183,7 @@ def zbmath_status(entries: List[Dict[str, str]]) -> Tuple[List[BibtexEntry], Lis
     return not_found, multiple
 
 
+
 def test_zbmath_book_fields() -> None:
     entry = {
         "title": "Pseudodifferential and singular integral operators",
@@ -239,3 +241,4 @@ def test_zbmath_status_lists() -> None:
     not_found, multiple = zbmath_status(entries)
     assert {e.id for e in not_found} == {"AblowitzFokasMusslimani06"}
     assert {e.id for e in multiple} == {"AliprantisBorder2006"}
+

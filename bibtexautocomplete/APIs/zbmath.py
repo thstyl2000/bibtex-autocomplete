@@ -11,6 +11,7 @@ from ..utils.constants import QUERY_MAX_RESULTS
 from ..utils.safe_json import JSONType, SafeJSON
 
 
+
 class ZbMathLookup(JSON_Lookup):
     """Lookup for info on https://zbmath.org
     Uses the zbMATH Open API documented here:
@@ -55,6 +56,7 @@ class ZbMathLookup(JSON_Lookup):
         if self.query_title:
             yield None
 
+
     def get_params(self) -> Dict[str, str]:
         params: Dict[str, str] = {
             "format": "json",
@@ -81,6 +83,7 @@ class ZbMathLookup(JSON_Lookup):
         results = list(json["result"].iter_list())
         self._result_count = len(results)
         return results
+
 
     @staticmethod
     def get_authors(authors: SafeJSON) -> List[Author]:
@@ -150,6 +153,7 @@ class ZbMathLookup(JSON_Lookup):
         if hasattr(self, "_result_count"):
             info["zbmath-result-count"] = self._result_count
         return info
+
 
     # Set of fields we can get from a query.
     # If all are already present on an entry, the query can be skipped.
