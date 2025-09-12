@@ -2,9 +2,13 @@ from typing import Dict
 
 import pytest
 
+from urllib.parse import parse_qs, urlparse
+
+
 from bibtexautocomplete.APIs.zbmath import ZbMathLookup
 from bibtexautocomplete.bibtex.author import Author
 from bibtexautocomplete.bibtex.entry import BibtexEntry
+from bibtexautocomplete.bibtex.normalize import normalize_str
 from bibtexautocomplete.utils.safe_json import SafeJSON
 
 
@@ -135,6 +139,7 @@ def test_zbmath_lookup(entry: Dict[str, str], expected: str) -> None:
             assert title is not None and expected.lower() in title.lower()
 
 
+
 def test_zbmath_lookup_no_title() -> None:
     entry = {
         "author": "ABLOWITZ, M. J. and FOKAS, A. S. and MUSSLIMANI, Z. H.",
@@ -143,3 +148,28 @@ def test_zbmath_lookup_no_title() -> None:
     bib = BibtexEntry.from_entry("test", entry)
     lookup = ZbMathLookup(bib)
     assert lookup.query() is None
+
+
+
+def test_zbmath_lookup_quoted_title() -> None:
+    entry = {
+        "title": "Nonlocal models for nonlinear, dispersive waves",
+        "author": "Abdelouhab, L. and Bona, J.L. and Felland, M. and Saut, J.-C.",
+        "ID": "AbdelouhabBonaFellandSaut89",
+    }
+    bib = BibtexEntry.from_entry("test", entry)
+    lookup = ZbMathLookup(bib)
+    res = lookup.query()
+    if res is None:
+        status = lookup.get_last_query_info().get("response-status")
+        if isinstance(status, int):
+            assert status == 429 or status >= 500
+        return
+    info = lookup.get_last_query_info()
+    url = info.get("url")
+    assert isinstance(url, str)
+    params = parse_qs(urlparse(url).query)
+    search = params.get("search_string", [""])[0]
+    assert search.startswith(f'"{normalize_str(entry["title"])}"')
+    assert res.doi.to_str() == "10.1016/0167-2789(89)90050-x"
+
