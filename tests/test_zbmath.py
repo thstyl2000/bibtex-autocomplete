@@ -69,6 +69,23 @@ def test_zbmath_lookup(entry: Dict[str, str], expected: str) -> None:
             assert title is not None and expected.lower() in title.lower()
 
 
+def test_zbmath_lookup_Abels2012_doi() -> None:
+    entry = {
+        "title": "Pseudodifferential and singular integral operators",
+        "author": "Abels, H.",
+        "ID": "Abels2012",
+    }
+    bib = BibtexEntry.from_entry("test", entry)
+    lookup = ZbMathLookup(bib)
+    res = lookup.query()
+    if res is None:
+        status = lookup.get_last_query_info().get("response-status")
+        if isinstance(status, int):
+            assert status == 429 or status >= 500
+    else:
+        assert res.doi.to_str() == "10.1515/9783110250312"
+
+
 def test_zbmath_lookup_no_title() -> None:
     entry = {
         "author": "ABLOWITZ, M. J. and FOKAS, A. S. and MUSSLIMANI, Z. H.",
