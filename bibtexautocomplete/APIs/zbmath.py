@@ -36,13 +36,21 @@ class ZbMathLookup(JSON_Lookup):
     headers = {"Cookie": "tsnc=agreed"}
 
     def get_params(self) -> Dict[str, str]:
-        params: Dict[str, str] = {"format": "json", "results_per_page": str(QUERY_MAX_RESULTS)}
+
+        params: Dict[str, str] = {
+            "format": "json",
+            "results_per_page": str(QUERY_MAX_RESULTS),
+        }
+
         if self.doi is not None:
             params["search_string"] = f"doi:{self.doi}"
             return params
         if self.title is None:
             raise ValueError("zbMATH called with no title")
-        # Surround the title with quotes to mimic the website's exact-phrase search
+
+
+        # Quote the title to mimic the website's exact phrase search behaviour
+
         search = f'"{self.title}"'
         if self.authors:
             search += " " + " ".join(self.authors)
@@ -81,6 +89,9 @@ class ZbMathLookup(JSON_Lookup):
                     doi = normalize_doi(link["identifier"].to_str())
                     if doi is not None:
                         break
+        if doi is None:
+            doi = normalize_doi(self.doi)
+
         values.doi.set(doi)
 
         values.pages.set_str(result["source"]["pages"].to_str())

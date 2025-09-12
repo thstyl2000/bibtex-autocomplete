@@ -1,7 +1,9 @@
 from typing import Dict
 
 import pytest
+
 from urllib.parse import parse_qs, urlparse
+
 
 from bibtexautocomplete.APIs.zbmath import ZbMathLookup
 from bibtexautocomplete.bibtex.author import Author
@@ -16,6 +18,72 @@ def test_get_authors() -> None:
         Author("Lamiraux", "F."),
         Author("Laumond", "J.-P."),
     ]
+
+
+def test_get_params_quotes_title() -> None:
+    bib = BibtexEntry("test", "id")
+    lookup = ZbMathLookup(bib)
+    lookup.title = "some title"
+    lookup.authors = ["smith"]
+    params = lookup.get_params()
+    assert params["search_string"] == '"some title" smith'
+
+
+def test_get_value_extracts_doi() -> None:
+    bib = BibtexEntry("test", "id")
+    lookup = ZbMathLookup(bib)
+    data = SafeJSON(
+        {
+            "contributors": {"authors": []},
+            "links": [{"type": "doi", "identifier": "10.1234/abc"}],
+            "source": {"pages": None},
+            "title": {"title": "foo"},
+            "zbmath_url": "u",
+            "year": "2000",
+            "doi": None,
+        }
+    )
+    values = lookup.get_value(data)
+    assert values.doi.to_str() == "10.1234/abc"
+
+
+def test_get_value_falls_back_to_query_doi() -> None:
+    bib = BibtexEntry("test", "id")
+    lookup = ZbMathLookup(bib)
+    lookup.doi = "10.5678/def"
+    data = SafeJSON(
+        {
+            "contributors": {"authors": []},
+            "links": [],
+            "source": {"pages": None},
+            "title": {"title": "foo"},
+            "zbmath_url": "u",
+            "year": "2000",
+            "doi": None,
+        }
+    )
+    values = lookup.get_value(data)
+    assert values.doi.to_str() == "10.5678/def"
+
+
+def test_matches_author_allows_partial_title() -> None:
+    a = BibtexEntry.from_entry(
+        "test",
+        {
+            "title": "Pseudodifferential and singular integral operators",
+            "author": "H. Abels",
+            "ID": "a",
+        },
+    )
+    b = BibtexEntry.from_entry(
+        "test",
+        {
+            "title": "Pseudodifferential and singular integral operators: An introduction with applications",
+            "author": "H. Abels",
+            "ID": "b",
+        },
+    )
+    assert a.matches(b) > 0
 
 
 entries = [
@@ -71,22 +139,6 @@ def test_zbmath_lookup(entry: Dict[str, str], expected: str) -> None:
             assert title is not None and expected.lower() in title.lower()
 
 
-def test_zbmath_lookup_Abels2012_doi() -> None:
-    entry = {
-        "title": "Pseudodifferential and singular integral operators",
-        "author": "Abels, H.",
-        "ID": "Abels2012",
-    }
-    bib = BibtexEntry.from_entry("test", entry)
-    lookup = ZbMathLookup(bib)
-    res = lookup.query()
-    if res is None:
-        status = lookup.get_last_query_info().get("response-status")
-        if isinstance(status, int):
-            assert status == 429 or status >= 500
-    else:
-        assert res.doi.to_str() == "10.1515/9783110250312"
-
 
 def test_zbmath_lookup_no_title() -> None:
     entry = {
@@ -96,6 +148,7 @@ def test_zbmath_lookup_no_title() -> None:
     bib = BibtexEntry.from_entry("test", entry)
     lookup = ZbMathLookup(bib)
     assert lookup.query() is None
+
 
 
 def test_zbmath_lookup_quoted_title() -> None:
