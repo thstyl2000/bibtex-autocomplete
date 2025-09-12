@@ -1,8 +1,6 @@
-"""
-Lookup info from https://zbmath.org
-"""
+"""Lookup info from https://zbmath.org"""
 
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, Iterator, List, Optional
 
 from ..bibtex.author import Author
 from ..bibtex.constants import FieldNames
@@ -10,7 +8,8 @@ from ..bibtex.entry import BibtexEntry
 from ..bibtex.normalize import normalize_doi
 from ..lookups.lookups import JSON_Lookup
 from ..utils.constants import QUERY_MAX_RESULTS
-from ..utils.safe_json import SafeJSON
+from ..utils.safe_json import JSONType, SafeJSON
+
 
 
 class ZbMathLookup(JSON_Lookup):
@@ -35,6 +34,29 @@ class ZbMathLookup(JSON_Lookup):
     # zbMATH requires agreement to their terms via a cookie
     headers = {"Cookie": "tsnc=agreed"}
 
+    def iter_queries(self) -> Iterator[None]:
+        """Perform DOI, title+author and title searches without normalizing"""
+        self.title = self.entry.title.to_str()
+        self.doi = self.entry.doi.to_str()
+        authors = self.entry.author.value
+        if authors is not None:
+            self.authors = [author.lastname for author in authors]
+
+        if self.query_doi and self.doi is not None:
+            yield None
+            self.doi = None
+
+        if self.title is None:
+            return
+
+        if self.query_author_title and self.authors is not None:
+            yield None
+            self.authors = None
+
+        if self.query_title:
+            yield None
+
+
     def get_params(self) -> Dict[str, str]:
         params: Dict[str, str] = {
             "format": "json",
@@ -56,9 +78,12 @@ class ZbMathLookup(JSON_Lookup):
     # ============= Parsing results into entries =====================
 
     def get_results(self, data: bytes) -> Optional[Iterable[SafeJSON]]:
-        """Return the result list"""
+        """Return the result list and track the count"""
         json = SafeJSON.from_bytes(data)
-        return json["result"].iter_list()
+        results = list(json["result"].iter_list())
+        self._result_count = len(results)
+        return results
+
 
     @staticmethod
     def get_authors(authors: SafeJSON) -> List[Author]:
@@ -122,6 +147,13 @@ class ZbMathLookup(JSON_Lookup):
         values.url.set(result["zbmath_url"].to_str())
         values.year.set(result["year"].to_str())
         return values
+
+    def get_last_query_info(self) -> Dict[str, JSONType]:
+        info = super().get_last_query_info()
+        if hasattr(self, "_result_count"):
+            info["zbmath-result-count"] = self._result_count
+        return info
+
 
     # Set of fields we can get from a query.
     # If all are already present on an entry, the query can be skipped.

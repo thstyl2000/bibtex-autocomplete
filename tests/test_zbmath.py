@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
 
 import pytest
 
@@ -115,6 +116,15 @@ entries = [
         },
         "10.1017/cbo9780511623998",
     ),
+    (
+        {
+            "title": "Bounds on exponential decay of eigenfunctions of Schrödinger operators",
+            "author": "Agmon, Shmuel",
+            "doi": "10.1007/bfb0080331",
+            "ID": "Agmon1985",
+        },
+        "10.1007/bfb0080331",
+    ),
 ]
 
 
@@ -146,6 +156,32 @@ def _query_or_skip(entry: Dict[str, str]) -> Optional[BibtexEntry]:
             assert status == 429 or status >= 500
         return None
     return res
+
+
+def zbmath_status(entries: List[Dict[str, str]]) -> Tuple[List[BibtexEntry], List[BibtexEntry]]:
+    """Return bib lists for entries not found and with multiple editions"""
+    not_found: List[BibtexEntry] = []
+    multiple: List[BibtexEntry] = []
+    skipped = False
+    for entry in entries:
+        bib = BibtexEntry.from_entry("test", entry)
+        lookup = ZbMathLookup(bib)
+        res = lookup.query()
+        info = lookup.get_last_query_info()
+        status = info.get("response-status")
+        if res is None:
+            if status is None or (isinstance(status, int) and (status == 429 or status >= 500)):
+                skipped = True
+                continue
+            not_found.append(bib)
+        else:
+            count = info.get("zbmath-result-count")
+            if isinstance(count, int) and count > 1:
+                multiple.append(res)
+    if skipped:
+        pytest.skip("zbMATH rate limited")
+    return not_found, multiple
+
 
 
 def test_zbmath_book_fields() -> None:
@@ -183,3 +219,26 @@ def test_zbmath_lookup_no_title() -> None:
     bib = BibtexEntry.from_entry("test", entry)
     lookup = ZbMathLookup(bib)
     assert lookup.query() is None
+
+
+def test_zbmath_status_lists() -> None:
+    entries = [
+        {
+            "title": "Bounds on exponential decay of eigenfunctions of Schrödinger operators",
+            "author": "Agmon, Shmuel",
+            "ID": "Agmon1985",
+        },
+        {
+            "title": "Infinite Dimensional Analysis",
+            "author": "Aliprantis, C. D. and Border, K. C.",
+            "ID": "AliprantisBorder2006",
+        },
+        {
+            "author": "ABLOWITZ, M. J. and FOKAS, A. S. and MUSSLIMANI, Z. H.",
+            "ID": "AblowitzFokasMusslimani06",
+        },
+    ]
+    not_found, multiple = zbmath_status(entries)
+    assert {e.id for e in not_found} == {"AblowitzFokasMusslimani06"}
+    assert {e.id for e in multiple} == {"AliprantisBorder2006"}
+
