@@ -5,7 +5,7 @@ from typing import Dict, Iterable, Iterator, List, Optional
 from ..bibtex.author import Author
 from ..bibtex.constants import FieldNames
 from ..bibtex.entry import BibtexEntry
-from ..bibtex.normalize import normalize_doi
+from ..bibtex.normalize import author_search_key, normalize_doi
 from ..lookups.lookups import JSON_Lookup
 from ..utils.constants import QUERY_MAX_RESULTS
 from ..utils.safe_json import JSONType, SafeJSON
@@ -40,7 +40,7 @@ class ZbMathLookup(JSON_Lookup):
         self.doi = self.entry.doi.to_str()
         authors = self.entry.author.value
         if authors is not None:
-            self.authors = [author.lastname for author in authors]
+            self.authors = [author_search_key(author) for author in authors]
 
         if self.query_doi and self.doi is not None:
             yield None

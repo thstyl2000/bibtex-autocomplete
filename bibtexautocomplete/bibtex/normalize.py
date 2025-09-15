@@ -11,6 +11,7 @@ from bibtexparser.latexenc import latex_to_unicode
 
 from ..utils.constants import EntryType
 from ..utils.logger import logger
+from .author import Author
 
 
 def safe_latex_to_unicode(string: str) -> Optional[str]:
@@ -121,3 +122,39 @@ def normalize_url(url: str, previous: Optional[str] = None) -> Optional[Tuple[st
     if split.fragment != "":
         path += "#" + split.fragment
     return domain, path
+
+
+def escape_latex_special_chars(value: str) -> str:
+    """Escape latex special characters in a field.
+
+    Currently only escapes ampersands to ensure valid bibtex output."""
+
+    return value.replace("&", "\\&")
+
+
+def prefer_journal_over_fjournal(entry: EntryType) -> None:
+    """Ensure `journal` field is preferred over `fjournal`.
+
+    If both fields are present, discard `fjournal`. If only `fjournal`
+    is provided, promote it to `journal`."""
+
+    if "journal" in entry:
+        entry.pop("fjournal", None)
+    else:
+        fjournal = entry.pop("fjournal", None)
+        if fjournal is not None:
+            entry["journal"] = fjournal
+
+
+def author_search_key(author: Author) -> str:
+    """Return a search-friendly representation of an author's name.
+
+    Format as "<last name>, <first letter>*" to narrow API queries. If the
+    author's first name is missing, fall back to only the last name."""
+
+    firstnames = author.firstnames
+    if firstnames is not None:
+        firstnames = firstnames.strip()
+        if firstnames:
+            return f"{author.lastname}, {firstnames[0]}*"
+    return author.lastname

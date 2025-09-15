@@ -238,6 +238,8 @@ class BibtexEntry:
         # can compensate for partial title mismatches
         author_match = self.get_field("author").matches(other.get_field("author"))
         if author_match is not None:
+            if author_match <= FIELD_NO_MATCH:
+                return ENTRY_NO_MATCH
             total += FIELD_MULTIPLIERS["author"][0] * author_match
         # If neither title, DOI nor author match, we can't id the entry with any certainty
         if total <= ENTRY_NO_MATCH:
