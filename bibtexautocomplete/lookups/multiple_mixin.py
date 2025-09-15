@@ -6,7 +6,7 @@ Set class attribute to be used by the query in get_data
 from typing import Iterator, List, Optional
 
 from ..bibtex.entry import BibtexEntry
-from ..bibtex.normalize import normalize_str
+from ..bibtex.normalize import author_search_key, normalize_str
 from .abstract_base import AbstractLookup, Input, Output
 from .abstract_entry_lookup import AbstractEntryLookup
 
@@ -63,7 +63,7 @@ class DAT_Query_Mixin(MultipleQueryMixin[BibtexEntry, BibtexEntry], AbstractEntr
         self.doi = self.entry.doi.to_str()
         authors = self.entry.author.value
         if authors is not None:
-            self.authors = [author.lastname for author in authors]
+            self.authors = [author_search_key(author) for author in authors]
 
         if self.query_doi and self.doi is not None:
             yield None

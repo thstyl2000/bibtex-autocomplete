@@ -48,25 +48,27 @@ class TestDATQuery:
 
     def test_all(self) -> None:
         title = "This is a title++"
-        authors = ["Alp", "Rom", "Bob"]
+        authors = ["Alice Alp", "Romeo Rom", "Bob Bob"]
+        search_authors = ["Alp, A*", "Rom, R*", "Bob, B*"]
         doi = "10.1234/123456"
         entry = {"doi": doi, "author": " and ".join(authors), "title": title}
         expected: List[ToCheck] = [
-            ToCheck(doi=doi, author=authors, title=title),
-            ToCheck(doi=None, author=authors, title=title),
+            ToCheck(doi=doi, author=search_authors, title=title),
+            ToCheck(doi=None, author=search_authors, title=title),
             ToCheck(doi=None, author=None, title=title),
         ]
         self.make_query(expected, entry)
 
     def test_no_doi(self) -> None:
         title = "this is a title"
-        authors = ["Alp", "Rom", "Bob"]
+        authors = ["Alice Alp", "Romeo Rom", "Bob Bob"]
+        search_authors = ["Alp, A*", "Rom, R*", "Bob, B*"]
         entry = {
             "author": " and ".join(authors),
             "title": title,
         }
         expected: List[ToCheck] = [
-            ToCheck(doi=None, author=authors, title=title),
+            ToCheck(doi=None, author=search_authors, title=title),
             ToCheck(doi=None, author=None, title=title),
         ]
         self.make_query(expected, entry)
@@ -85,14 +87,15 @@ class TestDATQuery:
         self.make_query(expected, entry)
 
     def test_no_title(self) -> None:
-        authors = ["Alp", "Rom", "Bob"]
+        authors = ["Alice Alp", "Romeo Rom", "Bob Bob"]
+        search_authors = ["Alp, A*", "Rom, R*", "Bob, B*"]
         doi = "10.1234/123456"
         entry = {
             "doi": doi,
             "author": " and ".join(authors),
         }
         expected: List[ToCheck] = [
-            ToCheck(doi=doi, author=authors, title=None),
+            ToCheck(doi=doi, author=search_authors, title=None),
         ]
         self.make_query(expected, entry)
 

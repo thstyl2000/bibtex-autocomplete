@@ -38,7 +38,11 @@ from ..bibtex.base_field import BibtexField
 from ..bibtex.constants import FIELD_NO_MATCH, FieldType, SearchedFields
 from ..bibtex.entry import ENTRY_TYPES, BibtexEntry
 from ..bibtex.io import file_read, file_write, get_entries, make_writer, read, write
-from ..bibtex.normalize import has_field
+from ..bibtex.normalize import (
+    escape_latex_special_chars,
+    has_field,
+    prefer_journal_over_fjournal,
+)
 from ..lookups.abstract_entry_lookup import LookupType
 from ..lookups.https import HTTPSLookup
 from ..utils.ansi import ANSICodes
@@ -414,6 +418,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
             if self.escape_unicode:
                 value = string_to_latex(value)
                 assert isinstance(value, str)
+            else:
+                value = escape_latex_special_chars(value)
             new_entry[self.prefix + field] = value
             changes.append(Changes(field, value, bib_field.source))
 
@@ -438,6 +444,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
                 new_entry = dict()
             entry.clear()
         entry.update(new_entry)
+        prefer_journal_over_fjournal(entry)
 
     def combine_field(
         self, results: List[BibtexEntry], fieldname: FieldType, entry_name: str

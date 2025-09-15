@@ -30,6 +30,8 @@ from bibtexautocomplete.bibtex.normalize import (
     normalize_str,
     normalize_str_weak,
     normalize_url,
+    escape_latex_special_chars,
+    prefer_journal_over_fjournal,
 )
 
 tests = [
@@ -60,6 +62,19 @@ tests = [
 @pytest.mark.parametrize(("inp", "out"), tests)
 def test_normalize_str(inp: str, out: str) -> None:
     assert normalize_str(inp) == out
+
+
+def test_escape_latex_special_chars() -> None:
+    assert escape_latex_special_chars("A & B") == "A \\& B"
+
+
+def test_prefer_journal_over_fjournal() -> None:
+    entry = {"journal": "Abbrev", "fjournal": "Full"}
+    prefer_journal_over_fjournal(entry)
+    assert entry == {"journal": "Abbrev"}
+    entry = {"fjournal": "Full"}
+    prefer_journal_over_fjournal(entry)
+    assert entry == {"journal": "Full"}
 
 
 def test_normalize_doi() -> None:
