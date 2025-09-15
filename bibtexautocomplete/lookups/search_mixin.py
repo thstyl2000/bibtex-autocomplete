@@ -8,11 +8,12 @@ New virtual methods:
 - get_value : result -> BibtexEntry - builds value from a result
 """
 
-from typing import Generic, Iterable, List, Optional, TypeVar
+from typing import Dict, Generic, Iterable, List, Optional, TypeVar
 
 from ..bibtex.constants import ENTRY_NO_MATCH
 from ..bibtex.entry import BibtexEntry
 from ..utils.logger import logger
+from ..utils.safe_json import JSONType
 from .abstract_base import Data
 from .abstract_entry_lookup import AbstractEntryLookup
 
@@ -83,10 +84,13 @@ class SearchResultMixin(Generic[result]):
         results = self.get_results(data.data)
         if results is None:
             logger.verbose_debug("no results")
+            self._last_result_count = 0
             return None
+        res_list = list(results)
+        self._last_result_count = len(res_list)
         max_score = ENTRY_NO_MATCH
         max_entry: Optional[BibtexEntry] = None
-        for res in results:
+        for res in res_list:
             entry = self.get_value(res)
             score = self.match_score(entry, res)
             logger.verbose_debug("match {} for {}", score, entry)
@@ -94,6 +98,13 @@ class SearchResultMixin(Generic[result]):
                 max_score = score
                 max_entry = entry
         return max_entry
+
+    _last_result_count: int = 0
+
+    def get_last_query_info(self) -> Dict[str, JSONType]:
+        info = super().get_last_query_info()
+        info["hit-count"] = self._last_result_count
+        return info
 
 
 class EntryMatchSearchMixin(SearchResultMixin[result], AbstractEntryLookup):
