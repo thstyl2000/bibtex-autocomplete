@@ -394,13 +394,28 @@ class BibtexAutocomplete(Iterable[EntryType]):
         new_fields: Set[FieldType] = set()
 
         dump = DataDump(entry_id)
+        not_found = True
+        multi_hits: List[str] = []
         for thread in threads:
             result, info = thread.result[self.position]
             dump.add_entry(thread.lookup.name, result, info)
+            hit_count = info.get("hit-count")
+            if isinstance(hit_count, int) and hit_count > 1:
+                multi_hits.append(f"{thread.lookup.name} ({hit_count} hits)")
             if result is not None:
                 result.sanitize(self.copy_doi_to_url)
                 results.append(result)
                 new_fields = new_fields.union(result.fields())
+                not_found = False
+
+        if not_found:
+            logger.info("No matches found for '{entry}'", entry=entry_id)
+        if multi_hits:
+            logger.info(
+                "Entry '{entry}' matched multiple results: {hits}",
+                entry=entry_id,
+                hits=", ".join(multi_hits),
+            )
 
         new_entry: EntryType = dict()
         for field in new_fields:
