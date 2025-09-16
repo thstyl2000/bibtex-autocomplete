@@ -5,7 +5,7 @@ from typing import Iterator, List
 
 import pytest
 
-from bibtexautocomplete.bibtex.constants import FieldNamesSet
+from bibtexautocomplete.bibtex.constants import FieldNamesSet, SearchedFields
 from bibtexautocomplete.bibtex.entry import BibtexEntry
 from bibtexautocomplete.core import apis, parser
 from bibtexautocomplete.core.main import ErrorCodes, main
@@ -91,6 +91,42 @@ def test_replace_entry_prefers_first_lookup(tmp_path: Path, fake_lookups: None) 
     assert "Crossref Title" not in contents
     assert "Crossref Note" not in contents
     assert "Original Note" not in contents
+
+
+def test_replace_entry_replaces_complete_entries(tmp_path: Path, fake_lookups: None) -> None:
+    input_path = tmp_path / "input.bib"
+    original_fields = {field: f"Original {field}" for field in SearchedFields}
+    entry_body = ",\n".join(
+        f"  {field} = {{{value}}}"
+        for field, value in sorted(original_fields.items())
+    )
+    input_path.write_text(
+        "@article{replaceKey,\n"
+        f"{entry_body}\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    output_path = tmp_path / "output.bib"
+
+    exit_code = main([
+        "-q",
+        "zbmath",
+        "-q",
+        "crossref",
+        "-R",
+        "-o",
+        str(output_path),
+        str(input_path),
+    ])
+
+    assert exit_code == ErrorCodes.SUCCESS
+
+    contents = output_path.read_text(encoding="utf-8")
+    assert "ZbMath Title" in contents
+    assert "Zb Journal" in contents
+    assert "Original title" not in contents
+    assert "Original journal" not in contents
+    assert "Original address" not in contents
 
 
 def test_replace_entry_requires_only_query(tmp_path: Path, fake_lookups: None) -> None:
