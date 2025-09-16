@@ -63,6 +63,54 @@ def test_get_value_falls_back_to_query_doi() -> None:
     assert values.doi.to_str() == "10.5678/def"
 
 
+def _make_series(short: Optional[str], title: Optional[str]) -> Dict[str, object]:
+    return {
+        "acronym": None,
+        "issn": [],
+        "issue": None,
+        "issue_id": None,
+        "parallel_title": None,
+        "part": None,
+        "publisher": None,
+        "series_id": None,
+        "short_title": short,
+        "title": title,
+        "volume": None,
+        "year": None,
+    }
+
+
+def _make_result(series: Dict[str, object]) -> SafeJSON:
+    return SafeJSON(
+        {
+            "contributors": {"authors": []},
+            "document_type": {"code": "j"},
+            "doi": None,
+            "links": [],
+            "source": {"book": [], "pages": None, "series": [series]},
+            "title": {"title": "foo"},
+            "zbmath_url": "u",
+            "year": "2000",
+        }
+    )
+
+
+def test_get_value_prefers_short_title_for_journal() -> None:
+    bib = BibtexEntry("test", "id")
+    lookup = ZbMathLookup(bib)
+    data = _make_result(_make_series("Abbrev.", "Full Title"))
+    values = lookup.get_value(data)
+    assert values.journal.to_str() == "Abbrev."
+
+
+def test_get_value_uses_full_title_when_short_missing() -> None:
+    bib = BibtexEntry("test", "id")
+    lookup = ZbMathLookup(bib)
+    data = _make_result(_make_series(None, "Full Title"))
+    values = lookup.get_value(data)
+    assert values.journal.to_str() == "Full Title"
+
+
 def test_matches_author_allows_partial_title() -> None:
     a = BibtexEntry.from_entry(
         "test",
