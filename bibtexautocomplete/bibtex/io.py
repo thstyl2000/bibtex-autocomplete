@@ -2,7 +2,7 @@
 Wraps around bibtexparser to provider parser/writer primitives
 """
 
-from typing import List, cast
+from typing import Dict, List, Optional, cast
 
 from bibtexparser.bibdatabase import BibDatabase, UndefinedString
 from bibtexparser.bparser import BibTexParser
@@ -12,11 +12,43 @@ from ..utils.constants import EntryType, PathType
 from ..utils.functions import BTAC_File_Error
 from ..utils.logger import logger
 
-# from bibtexparser.customization import convert_to_unicode
+ENTRY_SOURCE_COMMENT_KEY = "__btac_source_comment__"
+
+
+class BTACBibTexWriter(BibTexWriter):
+    """Custom writer that supports adding per-entry comments."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.entry_source_comments: Dict[str, str] = {}
+
+    def set_entry_source_comments(self, comments: Dict[str, str]) -> None:
+        """Update the mapping of entry ids to their source comments."""
+
+        self.entry_source_comments = comments
+
+    def _entry_to_bibtex(self, entry: EntryType) -> str:  # type: ignore[override]
+        comment: Optional[str] = None
+        entry_id = entry.get("ID")
+        if ENTRY_SOURCE_COMMENT_KEY in entry:
+            comment = entry[ENTRY_SOURCE_COMMENT_KEY]
+        elif entry_id is not None:
+            comment = self.entry_source_comments.get(entry_id)
+        if comment is not None:
+            entry = dict(entry)
+            entry.pop(ENTRY_SOURCE_COMMENT_KEY, None)
+        bibtex_entry = super()._entry_to_bibtex(entry)
+        if comment:
+            comment_lines = comment.splitlines()
+            formatted_comment = "\n".join(
+                f"% {line}" if not line.startswith("%") else line for line in comment_lines
+            )
+            return f"{formatted_comment}\n{bibtex_entry}"
+        return bibtex_entry
 
 
 def make_writer() -> BibTexWriter:
-    writer = BibTexWriter()
+    writer = BTACBibTexWriter()
     writer.indent = "\t"
     writer.add_trailing_comma = True
     writer.order_entries_by = None  # preserve order
