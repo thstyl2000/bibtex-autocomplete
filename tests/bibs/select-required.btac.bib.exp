@@ -3,25 +3,30 @@
 
 @comment{Outside of entries, text is just a comment}
 
+% BTAC sources: input
 @misc{entry_basic,
 	title = {My awesome article},
 	author = {Yours Truly},
 }
 
+% BTAC sources: input, fake_lookup
 @article{entry_basic2,
 	title = {Something},
 	author = {Someone},
 	journal = {Generated Journal 1},
 }
 
+% BTAC sources: input
 @booklet{almost_empty,
 	note = {This entry shouldn't be queried, no useful data},
 }
 
+% BTAC sources: input
 @techreport{also_almost_empty,
 	foo = {bar: no standard field at all},
 }
 
+% BTAC sources: input, fake_lookup
 @article{doi,
 	title = {Generated title 4},
 	author = {Doe4, John},
@@ -29,6 +34,7 @@
 	journal = {Generated Journal 4},
 }
 
+% BTAC sources: input, fake_lookup
 @inproceedings{giberish,
 	title = {giberish},
 	author = {1789},
@@ -41,6 +47,7 @@
 	pages = {not a number},
 }
 
+% BTAC sources: input
 @article{full,
 	title = {Full entry, never queried, but field order changed},
 	author = {1789},
@@ -59,6 +66,7 @@
 	volume = {full},
 }
 
+% BTAC sources: input
 @misc{marked,
 	title = {marked entry is not queried},
 	btacqueried = {2024-07-19},
@@ -66,12 +74,14 @@
 	pages = {1--150},
 }
 
+% BTAC sources: input
 @article{markedbis,
 	title = {marked entry is not queried},
 	btacqueried = {not necessarily a data},
 	doi = {10.22222/123456789},
 }
 
+% BTAC sources: input
 @misc{all_fields_for_misc,
 	title = {Test for filter-by-entrytype},
 	author = {My Guy},
@@ -82,6 +92,7 @@
 	year = {2015},
 }
 
+% BTAC sources: input
 @misc{opt_field_for_misc,
 	title = {Test for filter-by-entrytype},
 	author = {My Guy},
@@ -91,61 +102,73 @@
 	year = {2015},
 }
 
+% BTAC sources: input
 @misc{req_field_for_misc,
 	title = {Test for filter-by-entrytype},
 }
 
+% BTAC sources: input, fake_lookup
 @article{entry0,
 	title = {Title of entry 0},
 	author = {Doe6, John},
 	journal = {Generated Journal 6},
 }
 
+% BTAC sources: input, fake_lookup
 @book{entry1,
 	title = {Title of entry 1},
 	author = {Doe7, John},
 }
 
+% BTAC sources: input
 @booklet{entry2,
 	title = {Title of entry 2},
 }
 
+% BTAC sources: input, fake_lookup
 @conference{entry3,
 	title = {Title of entry 3},
 	author = {Doe8, John},
 	booktitle = {Generated booktitle 8},
 }
 
+% BTAC sources: input, fake_lookup
 @inbook{entry4,
 	title = {Title of entry 4},
 	author = {Doe9, John},
 	pages = {1--9},
 }
 
+% BTAC sources: input, fake_lookup
 @incollection{entry5,
 	title = {Title of entry 5},
 	author = {Doe10, John},
 	booktitle = {Generated booktitle 10},
 }
 
+% BTAC sources: input
 @manual{entry6,
 	title = {Title of entry 6},
 }
 
+% BTAC sources: input, fake_lookup
 @mastersthesis{entry7,
 	title = {Title of entry 7},
 	author = {Doe11, John},
 }
 
+% BTAC sources: input
 @misc{entry8,
 	title = {Title of entry 8},
 }
 
+% BTAC sources: input, fake_lookup
 @techreport{entry9,
 	title = {Title of entry 9},
 	author = {Doe12, John},
 }
 
+% BTAC sources: input, fake_lookup
 @unpublished{entry10,
 	title = {Title of entry 10},
 	author = {Doe13, John},
@@ -153,17 +176,20 @@
 Newline UppERcaSE AND accents: éàêïæøçÉÀÊÏÆØÇ},
 }
 
+% BTAC sources: input, fake_lookup
 @inproceedings{entry11,
 	title = {Title of entry 11},
 	author = {Doe14, John},
 	booktitle = {Generated booktitle 14},
 }
 
+% BTAC sources: input, fake_lookup
 @phdthesis{entry12,
 	title = {Title of entry 12},
 	author = {Doe15, John},
 }
 
+% BTAC sources: input
 @misc{with_accents,
 	title = {Lots OF accents AnD Capitalization: éàêïæøçÉÀÊÏÆØÇ},
 	author = {Somebody},

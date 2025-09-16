@@ -3,6 +3,7 @@ Bibtexautocomplete
 main class used to manage calls to different lookups
 """
 
+from collections import defaultdict
 from datetime import datetime, timedelta
 from fileinput import input
 from functools import reduce
@@ -16,6 +17,8 @@ from typing import (
     Any,
     Callable,
     Container,
+    DefaultDict,
+    Dict,
     Iterable,
     Iterator,
     List,
@@ -34,7 +37,7 @@ from bibtexparser.bibdatabase import BibDatabase
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser.latexenc import string_to_latex
 
-from ..bibtex.base_field import BibtexField
+from ..bibtex.base_field import BibtexField, SOURCE_SEPARATOR
 from ..bibtex.constants import FIELD_NO_MATCH, FieldType, SearchedFields
 from ..bibtex.entry import ENTRY_TYPES, BibtexEntry
 from ..bibtex.io import file_read, file_write, get_entries, make_writer, read, write
@@ -141,6 +144,9 @@ class BibtexAutocomplete(Iterable[EntryType]):
     # changes is a list of (field, new_value, source)
     changes: List[Tuple[str, List[Changes]]]
 
+    # Mapping of entry ID to the set of sources that contributed data
+    entry_sources: DefaultDict[str, Set[str]]
+
     # Current position when completing entries
     position: int
 
@@ -202,6 +208,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
         self.changed_entries = 0
         self.changed_fields = 0
         self.changes = []
+        self.entry_sources = defaultdict(set)
         self.dumps = []
         self.prefix = FIELD_PREFIX if prefix else ""
         self.mark = mark
@@ -484,6 +491,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
             entry.clear()
         entry.update(new_entry)
         prefer_journal_over_fjournal(entry)
+        if changes:
+            self._record_entry_sources(entry_id, [source for _, _, source in changes])
 
     def combine_field(
         self, results: List[BibtexEntry], fieldname: FieldType, entry_name: str
@@ -529,6 +538,50 @@ class BibtexAutocomplete(Iterable[EntryType]):
                     source=source,
                 )
 
+    def _record_entry_sources(self, entry_id: str, sources: Iterable[str]) -> None:
+        """Store the sources that contributed to an entry."""
+
+        entry_sources = self.entry_sources[entry_id]
+        for source in sources:
+            parts = []
+            if SOURCE_SEPARATOR in source:
+                parts.extend(source.split(SOURCE_SEPARATOR))
+            else:
+                parts.extend(source.split(","))
+            for part in parts:
+                cleaned = part.strip()
+                if cleaned:
+                    entry_sources.add(cleaned)
+
+    def _format_entry_sources(self, entry_id: str) -> Optional[str]:
+        """Format the comment describing sources for an entry."""
+
+        sources = {src.strip() for src in self.entry_sources.get(entry_id, set()) if src and src.strip()}
+        ordered_sources: List[str] = [INPUT_SOURCE]
+        extra_sources = sorted(src for src in sources if src != INPUT_SOURCE)
+        ordered_sources.extend(extra_sources)
+        if not ordered_sources:
+            return None
+        return "BTAC sources: " + ", ".join(dict.fromkeys(ordered_sources))
+
+    def _set_writer_entry_comments(self) -> None:
+        """Ensure the writer emits comments about entry sources."""
+
+        set_comments = getattr(self.writer, "set_entry_source_comments", None)
+        if not callable(set_comments):
+            return
+        comments: Dict[str, str] = {}
+        for db in self.bibdatabases:
+            for entry in get_entries(db):
+                entry_id = entry.get("ID")
+                if not entry_id:
+                    continue
+                comment = self._format_entry_sources(entry_id)
+                if comment is None:
+                    continue
+                comments[entry_id] = comment
+        set_comments(comments)
+
     wrote_header = False
 
     def write_header(self) -> None:
@@ -559,6 +612,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
         if not isinstance(files, list):
             files = [files]
         self.write_header()
+        self._set_writer_entry_comments()
         total = len(self.bibdatabases)
         wrote = 0
         for i, db in enumerate(self.bibdatabases):
@@ -578,6 +632,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
 
     def write_string(self) -> List[str]:
         """Returns the bibtex string representation of the databases"""
+        self._set_writer_entry_comments()
         bibs = []
         for db in self.bibdatabases:
             bibs.append(write(db, self.writer))
