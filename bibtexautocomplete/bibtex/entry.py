@@ -236,10 +236,13 @@ class BibtexEntry:
             total += FIELD_MULTIPLIERS["doi"][0] * doi_match
         # Match authors before deciding on early exit so author agreement
         # can compensate for partial title mismatches
-        author_match = self.get_field("author").matches(other.get_field("author"))
-        if author_match is not None:
-            if author_match <= FIELD_NO_MATCH:
+        author_field = self.get_field("author")
+        other_author_field = other.get_field("author")
+        author_match = author_field.matches(other_author_field)
+        if author_field.value is not None and other_author_field.value is not None:
+            if author_match is None or author_match <= FIELD_NO_MATCH:
                 return ENTRY_NO_MATCH
+        if author_match is not None:
             total += FIELD_MULTIPLIERS["author"][0] * author_match
         # If neither title, DOI nor author match, we can't id the entry with any certainty
         if total <= ENTRY_NO_MATCH:
