@@ -120,7 +120,10 @@ class ZbMathLookup(JSON_Lookup):
         series = next(source["series"].iter_list(), None)
 
         if doc_type == "j" and series is not None:
-            values.journal.set(series["title"].to_str())
+            journal_title = series["short_title"].to_str()
+            if journal_title is None:
+                journal_title = series["title"].to_str()
+            values.journal.set(journal_title)
             values.volume.set(series["volume"].to_str())
             values.number.set(series["issue"].to_str())
             for issn in series["issn"].iter_list():
