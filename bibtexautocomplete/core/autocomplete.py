@@ -173,6 +173,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
         no_trailing_comma: bool = False,
         indent: str = "\t",
         color: Optional[Literal["auto", "always", "never"]] = None,
+        not_found_log_path: Optional[PathType] = Path("btac-not-found.log"),
+        multiple_hits_log_path: Optional[PathType] = Path("btac-multiple-hits.log"),
     ):
         # main set the color directly because it can output various warnings,
         # but for API use, we can also set the color here
@@ -215,6 +217,26 @@ class BibtexAutocomplete(Iterable[EntryType]):
         self.copy_doi_to_url = copy_doi_to_url
         self.start_from = start_from
         self.dont_skip_slow_queries = dont_skip_slow_queries
+        self.not_found_log_path = self._prepare_log_file(not_found_log_path)
+        self.multiple_hits_log_path = self._prepare_log_file(multiple_hits_log_path)
+
+    @staticmethod
+    def _prepare_log_file(path: Optional[PathType]) -> Optional[Path]:
+        """Prepare a log file and return its resolved Path"""
+        if path is None:
+            return None
+        resolved = Path(path)
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        with resolved.open("w", encoding="utf-8"):
+            pass
+        return resolved
+
+    @staticmethod
+    def _write_log(path: Optional[Path], message: str) -> None:
+        if path is None:
+            return
+        with path.open("a", encoding="utf-8") as logfile:
+            logfile.write(message + "\n")
 
     def __iter__(self) -> Iterator[EntryType]:
         """Iterate through entries"""
@@ -410,12 +432,14 @@ class BibtexAutocomplete(Iterable[EntryType]):
 
         if not_found:
             logger.info("No matches found for '{entry}'", entry=entry_id)
+            self._write_log(self.not_found_log_path, entry_id)
         if multi_hits:
             logger.info(
                 "Entry '{entry}' matched multiple results: {hits}",
                 entry=entry_id,
                 hits=", ".join(multi_hits),
             )
+            self._write_log(self.multiple_hits_log_path, f"{entry_id}: {', '.join(multi_hits)}")
 
         new_entry: EntryType = dict()
         for field in new_fields:
