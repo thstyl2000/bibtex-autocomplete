@@ -147,6 +147,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             # Print set without leading and ending brace
             logger.warn("Duplicate '-q' arguments ignored: {set}", set=str(dups)[1:-1])
         lookups = list_sort_using(lookups, args.only_query, lambda x: x.name)
+    if args.replace_entry and args.only_query == []:
+        try:
+            parser.error(
+                "{StBold}Invalid option combination:\n{Reset}"
+                "  {FgYellow}-R/--replace-entry{Reset} requires at least one {FgYellow}-q/--only-query{Reset} lookup"
+            )
+        except ValueError:
+            return ErrorCodes.CLI_ERROR
 
     fields = OnlyExclude[FieldType].from_nonempty(args.only_complete, args.dont_complete)
     if args.only_complete != [] and args.dont_complete != []:
@@ -217,6 +225,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             no_trailing_comma=args.no_trailing_comma,
             indent=args.indent,
             verbose=args.verbose,
+            replace_entry=args.replace_entry,
         )
         completer.load_file(args.input)
         completer.print_filters()

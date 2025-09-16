@@ -135,6 +135,7 @@ def make_parser() -> MyParser:
 
     parser.add_argument("--dont-query", "-Q", action="append", default=[], choices=LOOKUP_NAMES)
     parser.add_argument("--only-query", "-q", action="append", default=[], choices=LOOKUP_NAMES)
+    parser.add_argument("--replace-entry", "-R", action="store_true")
     parser.add_argument("--dont-complete", "-C", action="append", default=[], choices=FIELD_NAMES)
     parser.add_argument("--only-complete", "-c", action="append", default=[], choices=FIELD_NAMES)
     parser.add_argument("--dont-overwrite", "-W", action="append", default=[], choices=FIELD_NAMES)

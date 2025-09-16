@@ -259,10 +259,17 @@ regularly.
 - `-q --only-query <site>` or `-Q --dont-query <site>`
 
   Restrict which websites to query from. `<site>` must be one of: `openalex`,
-  `crossref`, `arxiv`, `s2`, `unpaywall`, `dblp`, `researchr`, `hep`. These arguments
+  `crossref`, `arxiv`, `s2`, `unpaywall`, `dblp`, `researchr`, `hep`, `zbmath`. These arguments
   can be used multiple times, for example to only query Crossref and DBLP use
   `-q crossref -q dblp` or
   `-Q openalex -Q researchr -Q unpaywall -Q arxiv -Q s2 -Q hep`
+
+- `-R --replace-entry`
+
+  When used together with `-q/--only-query`, clear the existing BibTeX entry
+  (preserving its key and entry type) and repopulate it with data from the first
+  lookup that returns a result. Additional lookups are ignored for data
+  population, so order the `-q` flags to match your priority.
 
 - `-e --only-entry <id>` or `-E --exclude-entry <id>`
 

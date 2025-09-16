@@ -160,6 +160,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
         prefix: bool = False,
         escape_unicode: bool = False,
         diff_mode: bool = False,
+        replace_entry: bool = False,
         # Restrict which fields should be completed
         fields_to_complete: Optional[Set[FieldType]] = None,
         # Restrict which fields should be overwritten
@@ -226,6 +227,7 @@ class BibtexAutocomplete(Iterable[EntryType]):
         self.dont_skip_slow_queries = dont_skip_slow_queries
         self.not_found_log_path = self._prepare_log_file(not_found_log_path)
         self.multiple_hits_log_path = self._prepare_log_file(multiple_hits_log_path)
+        self.replace_entry = replace_entry
 
     @staticmethod
     def _prepare_log_file(path: Optional[PathType]) -> Optional[Path]:
@@ -420,7 +422,9 @@ class BibtexAutocomplete(Iterable[EntryType]):
         changes: List[Changes] = []
         results: List[BibtexEntry] = []
         entry_id = entry.get("ID", "unnamed")
+        entry_type = entry.get("ENTRYTYPE")
         new_fields: Set[FieldType] = set()
+        primary_result: Optional[BibtexEntry] = None
 
         dump = DataDump(entry_id)
         not_found = True
@@ -434,6 +438,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
             if result is not None:
                 result.sanitize(self.copy_doi_to_url)
                 results.append(result)
+                if primary_result is None:
+                    primary_result = result
                 new_fields = new_fields.union(result.fields())
                 not_found = False
 
@@ -448,10 +454,20 @@ class BibtexAutocomplete(Iterable[EntryType]):
             )
             self._write_log(self.multiple_hits_log_path, f"{entry_id}: {', '.join(multi_hits)}")
 
+        if self.replace_entry and primary_result is not None:
+            results = [primary_result]
+            new_fields = primary_result.fields()
+
+        allowed_fields: Set[FieldType]
+        if self.replace_entry:
+            allowed_fields = self.get_fields_to_complete_by_entrytype(entry)
+        else:
+            allowed_fields = to_complete
+
         new_entry: EntryType = dict()
         for field in new_fields:
             # Filter which fields to add
-            if field not in to_complete:
+            if field not in allowed_fields:
                 continue
             bib_field = self.combine_field(results, field, entry_id)
             if bib_field is None:
@@ -482,6 +498,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
         self.dumps.append(dump)
         if self.mark:
             new_entry[MARKED_FIELD] = datetime.today().strftime("%Y-%m-%d")
+        should_replace = self.replace_entry and primary_result is not None and len(changes) > 0
+
         if self.diff_mode:
             if len(new_entry) > (1 if self.mark else 0):
                 new_entry["ID"] = entry_id
@@ -489,6 +507,11 @@ class BibtexAutocomplete(Iterable[EntryType]):
             else:
                 new_entry = dict()
             entry.clear()
+        elif should_replace:
+            entry.clear()
+            entry["ID"] = entry_id
+            if entry_type is not None:
+                entry["ENTRYTYPE"] = entry_type
         entry.update(new_entry)
         prefer_journal_over_fjournal(entry)
         if changes:
