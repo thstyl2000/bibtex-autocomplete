@@ -308,7 +308,10 @@ class BibtexAutocomplete(Iterable[EntryType]):
         for x in entries:
             bib = BibtexEntry.from_entry(INPUT_SOURCE, x)
             bib_entries.append(bib)
-            to_complete.append(self.get_fields_to_complete(x))
+            fields_for_entry = self.get_fields_to_complete(x)
+            if self.replace_entry and not fields_for_entry:
+                fields_for_entry = self.get_fields_to_complete_by_entrytype(x)
+            to_complete.append(fields_for_entry)
 
         # Create all threads
         condition = Condition()
