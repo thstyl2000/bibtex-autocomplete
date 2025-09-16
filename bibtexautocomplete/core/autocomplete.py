@@ -179,8 +179,8 @@ class BibtexAutocomplete(Iterable[EntryType]):
         no_trailing_comma: bool = False,
         indent: str = "\t",
         color: Optional[Literal["auto", "always", "never"]] = None,
-        not_found_log_path: Optional[PathType] = Path("btac-not-found.log"),
-        multiple_hits_log_path: Optional[PathType] = Path("btac-multiple-hits.log"),
+        not_found_log_path: Optional[PathType] = None,
+        multiple_hits_log_path: Optional[PathType] = None,
     ):
         # main set the color directly because it can output various warnings,
         # but for API use, we can also set the color here
