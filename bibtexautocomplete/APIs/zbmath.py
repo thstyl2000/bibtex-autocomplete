@@ -1,5 +1,6 @@
 """Lookup info from https://zbmath.org"""
 
+import re
 from typing import Dict, Iterable, Iterator, List, Optional
 
 from ..bibtex.author import Author
@@ -10,6 +11,74 @@ from ..lookups.lookups import JSON_Lookup
 from ..utils.constants import QUERY_MAX_RESULTS
 from ..utils.safe_json import JSONType, SafeJSON
 
+
+
+LATEX_COMMANDS_TO_REMOVE = {
+    "textbf",
+    "textit",
+    "textsc",
+    "texttt",
+    "textsf",
+    "textnormal",
+    "textrm",
+    "textsl",
+    "textup",
+    "emph",
+    "mathbf",
+    "mathrm",
+    "mathsf",
+    "mathbb",
+    "mathcal",
+    "mathscr",
+    "mathfrak",
+    "mathit",
+    "boldsymbol",
+    "operatorname",
+    "underline",
+    "overline",
+    "widehat",
+    "widetilde",
+    "hat",
+    "tilde",
+    "bar",
+    "vec",
+    "dot",
+    "ddot",
+    "breve",
+    "check",
+    "acute",
+    "grave",
+}
+
+WHITESPACE_RE = re.compile(r"\s+")
+
+
+def strip_latex_code(text: str) -> str:
+    """Return *text* with LaTeX commands and math delimiters removed.
+
+    This is a best-effort cleanup that strips common command markers (``\``)
+    and inline math delimiters (``$``). It intentionally keeps the remaining
+    content untouched so that meaningful characters such as letters or numbers
+    remain available for searches.
+    """
+
+    without_math = text.replace("$", " ")
+    parts = without_math.split("\\")
+    if len(parts) == 1:
+        cleaned = without_math
+    else:
+        cleaned_parts: List[str] = [parts[0]]
+        for segment in parts[1:]:
+            lower = segment.lower()
+            stripped = segment
+            for command in LATEX_COMMANDS_TO_REMOVE:
+                if lower.startswith(command):
+                    stripped = segment[len(command) :]
+                    break
+            cleaned_parts.append(stripped)
+        cleaned = "".join(cleaned_parts)
+    cleaned = cleaned.replace("{", "").replace("}", "")
+    return WHITESPACE_RE.sub(" ", cleaned).strip()
 
 
 class ZbMathLookup(JSON_Lookup):
@@ -34,10 +103,23 @@ class ZbMathLookup(JSON_Lookup):
     # zbMATH requires agreement to their terms via a cookie
     headers = {"Cookie": "tsnc=agreed"}
 
+    def __init__(self, entry: BibtexEntry) -> None:
+        super().__init__(entry)
+        self._use_latex_stripped_title = False
+        self._latex_retry_attempted = False
+        self._latex_stripped_title: Optional[str] = None
+
+    def _get_query_title(self) -> Optional[str]:
+        if self._use_latex_stripped_title:
+            return self._latex_stripped_title
+        return self.entry.title.to_str()
+
     def iter_queries(self) -> Iterator[None]:
         """Perform DOI, title+author and title searches without normalizing"""
-        self.title = self.entry.title.to_str()
+        self.title = self._get_query_title()
         self.doi = self.entry.doi.to_str()
+        if self._use_latex_stripped_title:
+            self.doi = None
         authors = self.entry.author.value
         if authors is not None:
             self.authors = [author_search_key(author) for author in authors]
@@ -156,6 +238,40 @@ class ZbMathLookup(JSON_Lookup):
         if hasattr(self, "_result_count"):
             info["zbmath-result-count"] = self._result_count
         return info
+
+    def _title_without_latex(self) -> Optional[str]:
+        title = self.entry.title.to_str()
+        if title is None:
+            return None
+        stripped = strip_latex_code(title)
+        if stripped == "" or stripped == title:
+            return None
+        return stripped
+
+    def query(self) -> Optional[BibtexEntry]:
+        result = super().query()
+        if result is not None or self._latex_retry_attempted:
+            return result
+
+        info = self.get_last_query_info()
+        status = info.get("response-status")
+        if not (isinstance(status, int) and 200 <= status < 300):
+            return None
+        if getattr(self, "_last_result_count", 0) != 0:
+            return None
+
+        stripped_title = self._title_without_latex()
+        if stripped_title is None:
+            return None
+
+        self._latex_retry_attempted = True
+        self._use_latex_stripped_title = True
+        self._latex_stripped_title = stripped_title
+        try:
+            return super().query()
+        finally:
+            self._use_latex_stripped_title = False
+            self._latex_stripped_title = None
 
 
     # Set of fields we can get from a query.
