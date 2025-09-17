@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, Optional, Tuple
 
 
@@ -6,6 +7,7 @@ import pytest
 from bibtexautocomplete.APIs.zbmath import ZbMathLookup
 from bibtexautocomplete.bibtex.author import Author
 from bibtexautocomplete.bibtex.entry import BibtexEntry
+from bibtexautocomplete.lookups.abstract_base import Data
 from bibtexautocomplete.utils.safe_json import SafeJSON
 
 
@@ -289,4 +291,75 @@ def test_zbmath_status_lists() -> None:
     not_found, multiple = zbmath_status(entries)
     assert {e.id for e in not_found} == {"AblowitzFokasMusslimani06"}
     assert {e.id for e in multiple} == {"AliprantisBorder2006"}
+
+
+class _FakeZbMathLookup(ZbMathLookup):
+    """Deterministic lookup to test LaTeX retry behaviour."""
+
+    def __init__(self, entry: BibtexEntry) -> None:
+        super().__init__(entry)
+        self.searches: List[str] = []
+        self._empty_response = json.dumps({"result": []}).encode()
+        self._success_response = json.dumps(
+            {
+                "result": [
+                    {
+                        "contributors": {"authors": [{"name": "Doe, J."}]},
+                        "document_type": {"code": "j"},
+                        "doi": "10.1234/example",
+                        "links": [],
+                        "source": {
+                            "book": [],
+                            "pages": None,
+                            "series": [
+                                {
+                                    "short_title": "Journal",
+                                    "title": "Journal of Tests",
+                                    "volume": "1",
+                                    "issue": "1",
+                                    "issn": [{"number": "1234-5678"}],
+                                    "publisher": "Publisher",
+                                }
+                            ],
+                        },
+                        "title": {"title": "On Rings"},
+                        "zbmath_url": "https://zbmath.org/?q=example",
+                        "year": "2023",
+                    }
+                ]
+            }
+        ).encode()
+
+    def get_data(self) -> Data:
+        params = self.get_params()
+        search = params.get("search_string", "")
+        self.searches.append(search)
+        payload = self._success_response if "\\" not in search else self._empty_response
+        self._last_query_info = {
+            "url": "https://api.zbmath.org/test",
+            "response-time": 0.0,
+            "response-status": 200,
+        }
+        return Data(data=payload, code=200, reason="OK", delay=0.0)
+
+
+def test_zbmath_retries_without_latex() -> None:
+    entry = BibtexEntry.from_entry(
+        "test",
+        {
+            "ID": "latexTitle",
+            "title": r"On \textbf{Rings}",
+            "author": "Doe, J.",
+        },
+    )
+    lookup = _FakeZbMathLookup(entry)
+    res = lookup.query()
+
+    assert res is not None
+    assert res.title.to_str() == "On Rings"
+    assert len(lookup.searches) == 3
+    assert lookup.searches[0].startswith('"On \\textbfRings"')
+    assert lookup.searches[1] == '"On \\textbfRings"'
+    assert lookup.searches[2].startswith('"On Rings"')
+    assert "\\" not in lookup.searches[2]
 
